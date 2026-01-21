@@ -25,9 +25,6 @@ if not os.path.exists(INVENTORY_FILE):
 with open(INVENTORY_FILE) as f:
     devices = json.load(f)
 
-if not USERNAME or not PASSWORD:
-    raise RuntimeError("DEVICE_USERNAME / DEVICE_PASSWORD not set")
-
 # Show command - input model
 class ShowCommand(BaseModel):
     """Run a show command against a network device."""
