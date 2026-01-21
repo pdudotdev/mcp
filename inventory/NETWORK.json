@@ -1,0 +1,5 @@
+{
+	"R1": {"host": "172.20.20.11", "platform": "arista_eos", "transport": "asyncssh"},
+	"R2": {"host": "172.20.20.22", "platform": "arista_eos", "transport": "asyncssh"},
+	"R3": {"host": "172.20.20.33", "platform": "arista_eos", "transport": "asyncssh"}
+}
