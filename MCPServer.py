@@ -1,5 +1,7 @@
 import os
 import json
+import time
+import asyncio
 from fastmcp import FastMCP
 from dotenv import load_dotenv
 from scrapli import AsyncScrapli
@@ -8,11 +10,11 @@ from pydantic import BaseModel, Field
 # Load environment variables
 load_dotenv()
 USERNAME = os.getenv("ROUTER_USERNAME")
-PASSWORD = os.getenv("ROUTER_PASSWORD")
+SSH_KEY_PATH = os.getenv("SSH_KEY_PATH")
 
-if not USERNAME or not PASSWORD:
-    raise RuntimeError("ROUTER_USERNAME / ROUTER_PASSWORD not set")
-    
+if not USERNAME or not SSH_KEY_PATH:
+    raise RuntimeError("Credentials not set")
+
 # Instantiate the FastMCP class
 mcp = FastMCP("mcp_automation")
 
@@ -46,13 +48,13 @@ async def run_show(params: ShowCommand) -> str:
     device = devices.get(params.device)
     if not device:
         return f"Unknown device. Available devices are: {list(devices.keys())}"
-
+    
     connection = {
         "host": device["host"],
         "platform": device["platform"],
         "transport": device["transport"],
         "auth_username": USERNAME,
-        "auth_password": PASSWORD,
+        "auth_private_key": SSH_KEY_PATH,
         "auth_strict_key": False,
     }
 
@@ -68,46 +70,57 @@ def validate_commands(cmds: list[str]):
         if any(bad in c.lower() for bad in FORBIDDEN):
             raise ValueError(f"Forbidden command detected: {c}")
 
+# Function for pushing configs to a device
+async def push_config_to_device(dev_name, device, commands):
+    connection = {
+                "host": device["host"],
+                "platform": device["platform"],
+                "transport": device["transport"],
+                "auth_username": USERNAME,
+                "auth_private_key": SSH_KEY_PATH,
+                "auth_strict_key": False,
+            }
+
+    async with AsyncScrapli(**connection) as conn:
+        response = await conn.send_configs(commands)
+        return dev_name, response.result
+
 # Send config tool
 @mcp.tool(name="push_config")
 async def push_config(params: ConfigCommand) -> dict:
     """
     Push configuration commands to one or more devices.
     """
+
+    start = time.perf_counter()
+
     # Check for any forbidden commands
     validate_commands(params.commands)
 
-    results = {}
+    tasks = []
 
     for dev_name in params.devices:
-        try:
-            device = devices.get(dev_name)
-            if not device:
-                results[dev_name] = "Unknown device"
-                continue
+        device = devices.get(dev_name)
+        tasks.append(
+            asyncio.create_task(
+                push_config_to_device(dev_name, device, params.commands)
+            )
+        )
 
-            connection = {
-                "host": device["host"],
-                "platform": device["platform"],
-                "transport": device["transport"],
-                "auth_username": USERNAME,
-                "auth_password": PASSWORD,
-                "auth_strict_key": False,
-            }
+    results = {}
 
-            async with AsyncScrapli(**connection) as conn:
-                response = await conn.send_configs(params.commands)
-                results[dev_name] = response.result
-        
-        except Exception as e:
-            results[dev_name] = {
-                "status": "failed",
-                "error": str(e),
-            }
+    completed = await asyncio.gather(*tasks, return_exceptions=True)
 
+    for item in completed:
+        if isinstance(item, Exception):
+            continue
+        dev_name, result = item
+        results[dev_name] = result
+
+    end = time.perf_counter()
+    results["execution_time_seconds"] = round(end - start, 2)
     return results
 
 # Run the MCP Server
 if __name__ == "__main__":
     mcp.run()
-
