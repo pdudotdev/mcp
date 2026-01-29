@@ -39,6 +39,10 @@ class ConfigCommand(BaseModel):
     devices: list[str] = Field(..., description="Device names from inventory (e.g. ['R1','R2'])")
     commands: list[str] = Field(..., description="Configuration commands to apply")
 
+# Empty placeholder - input model
+class EmptyInput(BaseModel):
+    pass
+
 # Read config tool
 @mcp.tool(name="run_show")
 async def run_show(params: ShowCommand) -> str:
@@ -120,6 +124,24 @@ async def push_config(params: ConfigCommand) -> dict:
     end = time.perf_counter()
     results["execution_time_seconds"] = round(end - start, 2)
     return results
+
+# Returns the expected network intent defined in INTENT.json (source of truth)
+@mcp.tool(name="get_intent")
+async def get_intent(params: EmptyInput) -> dict:
+    """
+    Return the desired network intent.
+    """
+    intent_file = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        "intent",
+        "INTENT.json"
+    )
+
+    if not os.path.exists(intent_file):
+        raise RuntimeError("INTENT.json not found")
+
+    with open(intent_file) as f:
+        return json.load(f)
 
 # Run the MCP Server
 if __name__ == "__main__":
