@@ -43,12 +43,18 @@ class ConfigCommand(BaseModel):
 class EmptyInput(BaseModel):
     pass
 
+# Snapshot - input model
+class SnapshotInput(BaseModel):
+    devices: list[str] = Field(..., description="Devices to snapshot")
+    profile: str = Field(..., description="Snapshot profile (e.g. ospf)")
+
 # Read config tool
 @mcp.tool(name="run_show")
 async def run_show(params: ShowCommand) -> str:
     """
     Execute a show command asynchronously using Scrapli via SSH.
     """
+
     device = devices.get(params.device)
     if not device:
         return f"Unknown device. Available devices are: {list(devices.keys())}"
@@ -131,6 +137,7 @@ async def get_intent(params: EmptyInput) -> dict:
     """
     Return the desired network intent.
     """
+
     intent_file = os.path.join(
         os.path.dirname(os.path.abspath(__file__)),
         "intent",
@@ -142,6 +149,66 @@ async def get_intent(params: EmptyInput) -> dict:
 
     with open(intent_file) as f:
         return json.load(f)
+
+# Snapshot tool: collect current state, store it on disk, return snapshot metadata
+@mcp.tool(name="snapshot_state")
+async def snapshot_state(params: SnapshotInput) -> dict:
+    """
+    Takes a snapshot of device state for the given profile.
+    Intended to be used before changes so differences can be reviewed manually.
+    """
+
+    snapshot_id = time.strftime("%Y%m%d-%H%M%S")
+    base_path = os.path.join("snapshots", snapshot_id)
+    os.makedirs(base_path, exist_ok=True)
+
+    stored = {}
+
+    for dev_name in params.devices:
+        device = devices.get(dev_name)
+        if not device:
+            continue
+
+        dev_path = os.path.join(base_path, dev_name)
+        os.makedirs(dev_path, exist_ok=True)
+
+        connection = {
+            "host": device["host"],
+            "platform": device["platform"],
+            "transport": device["transport"],
+            "auth_username": USERNAME,
+            "auth_private_key": SSH_KEY_PATH,
+            "auth_strict_key": False,
+        }
+
+        async with AsyncScrapli(**connection) as conn:
+            outputs = {}
+
+            # Always save running config
+            outputs["running_config"] = (
+                await conn.send_command("show running-config")
+            ).result
+
+            # Profile-driven commands
+            if params.profile == "ospf":
+                outputs["ospf_config"] = (await conn.send_command("show ip ospf")).result
+                outputs["neighbors"] = (await conn.send_command("show ip ospf neighbor")).result
+
+            elif params.profile == "stp":
+                outputs["stp_general"] = (await conn.send_command("show spanning-tree")).result
+                outputs["stp_details"] = (await conn.send_command("show spanning-tree detail")).result
+
+        for name, content in outputs.items():
+            with open(os.path.join(dev_path, f"{name}.txt"), "w") as f:
+                f.write(content)
+
+        stored[dev_name] = list(outputs.keys())
+
+    return {
+        "snapshot_id": snapshot_id,
+        "stored_at": base_path,
+        "devices": stored,
+    }
 
 # Run the MCP Server
 if __name__ == "__main__":
