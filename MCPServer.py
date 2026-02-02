@@ -36,7 +36,7 @@ class ShowCommand(BaseModel):
 # Config commands - input model
 class ConfigCommand(BaseModel):
     """Send configuration commands to one or more devices."""
-    devices: list[str] = Field(..., description="Device names from inventory (e.g. ['R1','R2'])")
+    devices: list[str] = Field(..., description="Device names from inventory (e.g. ['R1','R2','R3'])")
     commands: list[str] = Field(..., description="Configuration commands to apply")
 
 # Empty placeholder - input model
@@ -45,8 +45,8 @@ class EmptyInput(BaseModel):
 
 # Snapshot - input model
 class SnapshotInput(BaseModel):
-    devices: list[str] = Field(..., description="Devices to snapshot")
-    profile: str = Field(..., description="Snapshot profile (e.g. ospf)")
+    devices: list[str] = Field(..., description="Devices to snapshot (e.g. R1, R2, R3)")
+    profile: str = Field(..., description="Snapshot profile (e.g. ospf, stp)")
 
 # Read config tool
 @mcp.tool(name="run_show")
