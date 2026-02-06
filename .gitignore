@@ -4,6 +4,13 @@ __pycache__/
 *.pyc
 *.log
 .claude/
-clab-mcp-lab/
-.MCPServer.py.swp
 snapshots/
+.MCPServer.py.swp
+clab-mcp-lab/**
+!clab-mcp-lab/**/
+!clab-mcp-lab/topology-data.json
+!clab-mcp-lab/ansible-inventory.yml
+!clab-mcp-lab/nornir-simple-inventory.yml
+!clab-mcp-lab/r1/flash/startup-config
+!clab-mcp-lab/r2/flash/startup-config
+!clab-mcp-lab/r3/flash/startup-config

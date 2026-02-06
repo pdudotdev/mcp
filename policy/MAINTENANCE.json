@@ -1,0 +1,10 @@
+{
+  "timezone": "UTC",
+  "windows": [
+    {
+      "days": ["sat", "sun"],
+      "start": "00:00",
+      "end": "08:00"
+    }
+  ]
+}

@@ -1,0 +1,65 @@
+! Startup-config last modified at Fri Feb  6 05:17:48 2026 by root
+! device: r1 (cEOSLab, EOS-4.35.0F-44178984.4350F (engineering build))
+!
+no aaa root
+!
+username admin privilege 15 role network-admin secret sha512 $6$dsYmkYYVoZqY5LT2$d2RoY0TciqHXq0TzfoXfKj8pz2kVjjBxTJ9Vt/fRkWSdD3516LVlY4rWQVAD3VV7k.gIOERJGGgut8s6iJ8bU.
+username claude_mcp privilege 15 secret sha512 $6$sKeesciPuDxoKhPx$dWKI4X8RW.WuHyXOEYd35cI5.4eGQsAAAWcfi3z3cXMbyE36Q1ydj2EMSCyin4cjC1a9gFLNMQOIe751VCG/y0
+username claude_mcp ssh-key ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDjk8egC/hCNXVRn0h4kR4w52IQuGu9EgfvbYl2nMOuvgmxGn4nkizUSz71oyqqMKEYmJoemQwi+So/xMrPhj8QDIe3B2NGm711ktHb1iY1J/4f9CrcvGb4Th+nqwmuDg8RfMgzG2/kg0aYHX+M4ws63FRgMnp/ASyjKucZcKFGsMxBvDiPErJwGCuMRQbde804/rWNZb8g0LYduSB3TEpuOu02MVFMR0koJbOHwHWgRqDvv/okfiIGdE2qBd4YZfQGYnvPM1LE0qNHu1YqpDUxro/ObkV26D12EiYwmTI6EagtZXFjA8dw5IJ1c8qLaijoPC64rPfgGkngTWANgijp mcp@mcp-VirtualBox
+!
+management api http-commands
+   no shutdown
+!
+no service interface inactive port-id allocation disabled
+!
+transceiver qsfp default-mode 4x10G
+!
+service routing protocols model multi-agent
+!
+hostname r1
+!
+spanning-tree mode mstp
+!
+system l1
+   unsupported speed action error
+   unsupported error-correction action error
+!
+management api gnmi
+   transport grpc default
+!
+management api netconf
+   transport ssh default
+!
+interface Ethernet1
+   description TO-R2
+   no switchport
+   ip address 192.168.12.1/24
+!
+interface Ethernet2
+   description TO-R3
+   no switchport
+   ip address 192.168.13.1/24
+!
+interface Management0
+   ip address 172.20.20.11/24
+   ipv6 address 3fff:172:20:20::3/64
+!
+ip routing
+!
+ip route 0.0.0.0/0 172.20.20.1
+!
+ipv6 route ::/0 3fff:172:20:20::1
+!
+router multicast
+   ipv4
+      software-forwarding kernel
+   !
+   ipv6
+      software-forwarding kernel
+!
+router ospf 1
+   network 192.168.12.0/24 area 0.0.0.0
+   network 192.168.13.0/24 area 0.0.0.0
+   max-lsa 12000
+!
+end
